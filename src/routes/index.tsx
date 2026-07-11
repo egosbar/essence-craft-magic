@@ -527,24 +527,85 @@ function Field({ label, children, className = "" }: { label: string; children: R
 
 /* ---------------- Recipes ---------------- */
 
+const emptyRecipe = (): Recipe => ({
+  id: crypto.randomUUID(),
+  name: "",
+  category: "Custom",
+  description: "",
+  targetOG: 1.06,
+  targetFG: 1.0,
+  ingredients: [{ name: "", amount: "" }],
+  yeast: "",
+  fermentTemp: "",
+  fermentDays: "",
+  notes: "",
+  isCustom: true,
+});
+
 function RecipesView() {
+  const [customRecipes, setCustomRecipes] = useLocalStorage<Recipe[]>("sc-custom-recipes", []);
   const [filter, setFilter] = useState<SpiritCategory | "All">("All");
-  const categories: (SpiritCategory | "All")[] = ["All", "Neutral", "Whiskey", "Rum", "Brandy", "Gin", "Agave"];
+  const categories: (SpiritCategory | "All")[] = ["All", "Neutral", "Whiskey", "Rum", "Brandy", "Gin", "Agave", "Custom"];
+  const allRecipes = useMemo(() => [...RECIPES, ...customRecipes], [customRecipes]);
   const filtered = useMemo(
-    () => (filter === "All" ? RECIPES : RECIPES.filter((r) => r.category === filter)),
-    [filter],
+    () => (filter === "All" ? allRecipes : allRecipes.filter((r) => r.category === filter)),
+    [filter, allRecipes],
   );
   const [open, setOpen] = useState<Recipe | null>(null);
+  const [editing, setEditing] = useState<Recipe | null>(null);
+  const [creating, setCreating] = useState(false);
 
-  if (open) return <RecipeDetail recipe={open} onBack={() => setOpen(null)} />;
+  const saveCustom = (recipe: Recipe) => {
+    setCustomRecipes((prev) => {
+      const exists = prev.some((p) => p.id === recipe.id);
+      return exists ? prev.map((p) => (p.id === recipe.id ? recipe : p)) : [recipe, ...prev];
+    });
+  };
+
+  const removeCustom = (id: string) => {
+    setCustomRecipes((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  if (creating || editing) {
+    return (
+      <RecipeEditor
+        initial={creating ? emptyRecipe() : editing!}
+        onSave={(r) => {
+          saveCustom(r);
+          setCreating(false);
+          setEditing(null);
+        }}
+        onCancel={() => {
+          setCreating(false);
+          setEditing(null);
+        }}
+      />
+    );
+  }
+
+  if (open) {
+    return (
+      <RecipeDetail
+        recipe={open}
+        onBack={() => setOpen(null)}
+        onEdit={open.isCustom ? () => setEditing(open) : undefined}
+        onDelete={open.isCustom ? () => removeCustom(open.id) : undefined}
+      />
+    );
+  }
 
   return (
     <section className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold">Recipe Library</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Starting points for classic spirits. Adjust to your still and taste.
-        </p>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold">Recipe Library</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Starter recipes plus your own custom washes. Adjust to your still and taste.
+          </p>
+        </div>
+        <button onClick={() => setCreating(true)} className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold">
+          + Custom recipe
+        </button>
       </div>
       <div className="flex flex-wrap gap-2">
         {categories.map((c) => (
@@ -568,7 +629,14 @@ function RecipesView() {
             onClick={() => setOpen(r)}
             className="surface-card rounded-2xl p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-warm)]"
           >
-            <div className="text-xs uppercase tracking-widest text-accent">{r.category}</div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs uppercase tracking-widest text-accent">{r.category}</span>
+              {r.isCustom && (
+                <span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Yours
+                </span>
+              )}
+            </div>
             <h3 className="mt-2 font-display text-lg font-semibold">{r.name}</h3>
             <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{r.description}</p>
             <div className="mt-4 flex gap-4 font-mono text-xs text-muted-foreground">
@@ -583,15 +651,54 @@ function RecipesView() {
   );
 }
 
-function RecipeDetail({ recipe, onBack }: { recipe: Recipe; onBack: () => void }) {
+function RecipeDetail({
+  recipe,
+  onBack,
+  onEdit,
+  onDelete,
+}: {
+  recipe: Recipe;
+  onBack: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
   return (
     <section className="space-y-6">
-      <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground">
-        ← All recipes
-      </button>
+      <div className="flex items-center justify-between gap-4">
+        <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground">
+          ← All recipes
+        </button>
+        {recipe.isCustom && (
+          <div className="flex gap-2">
+            {onEdit && (
+              <button onClick={onEdit} className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
+                Edit
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={() => {
+                  onDelete();
+                  onBack();
+                }}
+                className="rounded-lg border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        )}
+      </div>
       <div className="surface-card overflow-hidden rounded-2xl">
         <div className="p-6 sm:p-8" style={{ background: "var(--gradient-copper)" }}>
-          <div className="text-xs uppercase tracking-[0.25em] text-primary-foreground/80">{recipe.category}</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs uppercase tracking-[0.25em] text-primary-foreground/80">{recipe.category}</div>
+            {recipe.isCustom && (
+              <span className="rounded-full border border-primary-foreground/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-primary-foreground/80">
+                Custom
+              </span>
+            )}
+          </div>
           <h1 className="mt-2 font-display text-3xl font-semibold text-primary-foreground">{recipe.name}</h1>
           <p className="mt-3 max-w-2xl text-sm text-primary-foreground/90">{recipe.description}</p>
         </div>
@@ -599,8 +706,8 @@ function RecipeDetail({ recipe, onBack }: { recipe: Recipe; onBack: () => void }
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Ingredients</h3>
             <ul className="mt-3 divide-y divide-border/60">
-              {recipe.ingredients.map((i) => (
-                <li key={i.name} className="flex justify-between py-2 text-sm">
+              {recipe.ingredients.map((i, idx) => (
+                <li key={`${i.name}-${idx}`} className="flex justify-between py-2 text-sm">
                   <span>{i.name}</span>
                   <span className="font-mono text-muted-foreground">{i.amount}</span>
                 </li>
@@ -624,6 +731,177 @@ function RecipeDetail({ recipe, onBack }: { recipe: Recipe; onBack: () => void }
               <p className="mt-2 text-sm leading-relaxed text-foreground/90">{recipe.notes}</p>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RecipeEditor({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: Recipe;
+  onSave: (r: Recipe) => void;
+  onCancel: () => void;
+}) {
+  const [r, setR] = useState<Recipe>(initial);
+  const update = <K extends keyof Recipe>(key: K, value: Recipe[K]) => setR((prev) => ({ ...prev, [key]: value }));
+
+  const categories: SpiritCategory[] = ["Neutral", "Whiskey", "Rum", "Brandy", "Gin", "Agave", "Custom"];
+
+  const updateIngredient = (idx: number, field: "name" | "amount", value: string) => {
+    const next = r.ingredients.map((ing, i) => (i === idx ? { ...ing, [field]: value } : ing));
+    update("ingredients", next);
+  };
+
+  const addIngredient = () => update("ingredients", [...r.ingredients, { name: "", amount: "" }]);
+  const removeIngredient = (idx: number) => update("ingredients", r.ingredients.filter((_, i) => i !== idx));
+
+  const isValid = r.name.trim() && r.ingredients.every((i) => i.name.trim());
+
+  return (
+    <section className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-3xl font-semibold">{initial.id && initial.name ? "Edit recipe" : "New custom recipe"}</h1>
+        <button onClick={onCancel} className="text-sm text-muted-foreground hover:text-foreground">
+          Cancel
+        </button>
+      </div>
+
+      <div className="surface-card rounded-2xl p-5 sm:p-6 space-y-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Recipe name">
+            <input
+              value={r.name}
+              onChange={(e) => update("name", e.target.value)}
+              className="input"
+              placeholder="e.g. Ego's Honey Turbo"
+            />
+          </Field>
+          <Field label="Category">
+            <select value={r.category} onChange={(e) => update("category", e.target.value as SpiritCategory)} className="input">
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+
+        <Field label="Description">
+          <textarea
+            rows={2}
+            value={r.description}
+            onChange={(e) => update("description", e.target.value)}
+            className="input"
+            placeholder="Short overview of the wash and style"
+          />
+        </Field>
+
+        <div className="grid gap-4 sm:grid-cols-4">
+          <Field label="Target OG">
+            <input
+              type="number"
+              step="0.001"
+              value={r.targetOG}
+              onChange={(e) => update("targetOG", parseFloat(e.target.value) || 0)}
+              className="input"
+            />
+          </Field>
+          <Field label="Target FG">
+            <input
+              type="number"
+              step="0.001"
+              value={r.targetFG}
+              onChange={(e) => update("targetFG", parseFloat(e.target.value) || 0)}
+              className="input"
+            />
+          </Field>
+          <Field label="Ferment temp">
+            <input
+              value={r.fermentTemp}
+              onChange={(e) => update("fermentTemp", e.target.value)}
+              className="input"
+              placeholder="e.g. 24–28 °C"
+            />
+          </Field>
+          <Field label="Ferment time">
+            <input
+              value={r.fermentDays}
+              onChange={(e) => update("fermentDays", e.target.value)}
+              className="input"
+              placeholder="e.g. 5–7 days"
+            />
+          </Field>
+        </div>
+
+        <Field label="Yeast">
+          <input
+            value={r.yeast}
+            onChange={(e) => update("yeast", e.target.value)}
+            className="input"
+            placeholder="e.g. DADY turbo yeast"
+          />
+        </Field>
+
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Ingredients</span>
+            <button onClick={addIngredient} className="rounded-lg border border-border px-3 py-1 text-xs hover:bg-muted">
+              + Add
+            </button>
+          </div>
+          <div className="space-y-2">
+            {r.ingredients.map((ing, idx) => (
+              <div key={idx} className="grid grid-cols-12 items-center gap-2">
+                <input
+                  value={ing.name}
+                  onChange={(e) => updateIngredient(idx, "name", e.target.value)}
+                  className="input col-span-6"
+                  placeholder="Ingredient"
+                />
+                <input
+                  value={ing.amount}
+                  onChange={(e) => updateIngredient(idx, "amount", e.target.value)}
+                  className="input col-span-5"
+                  placeholder="Amount"
+                />
+                <button
+                  onClick={() => removeIngredient(idx)}
+                  className="col-span-1 text-muted-foreground hover:text-destructive"
+                  aria-label="Remove"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Field label="Notes">
+          <textarea
+            rows={4}
+            value={r.notes}
+            onChange={(e) => update("notes", e.target.value)}
+            className="input"
+            placeholder="Process tips, cuts, aging advice…"
+          />
+        </Field>
+
+        <div className="flex justify-end gap-3 pt-2">
+          <button onClick={onCancel} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">
+            Cancel
+          </button>
+          <button
+            onClick={() => isValid && onSave(r)}
+            disabled={!isValid}
+            className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50"
+          >
+            Save recipe
+          </button>
         </div>
       </div>
     </section>
