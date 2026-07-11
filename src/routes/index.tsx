@@ -1,24 +1,779 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { RECIPES, type Recipe, type SpiritCategory } from "@/lib/recipes";
+import {
+  abvFromOgFg,
+  correctSG,
+  estimateDistillate,
+  potentialAbv,
+  suggestCuts,
+  waterToDilute,
+} from "@/lib/distilling";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
+type Tab = "batches" | "recipes" | "calc";
+
+interface GravityReading {
+  date: string;
+  sg: number;
+  temp?: number;
+  note?: string;
+}
+
+interface CutLog {
+  foreshots?: number;
+  heads?: number;
+  hearts?: number;
+  tails?: number;
+  notes?: string;
+}
+
+interface Batch {
+  id: string;
+  name: string;
+  recipeId?: string;
+  category: SpiritCategory;
+  startDate: string;
+  volumeL: number;
+  og: number;
+  fg?: number;
+  yeast: string;
+  fermentTemp: string;
+  readings: GravityReading[];
+  cuts?: CutLog;
+  status: "Fermenting" | "Ready to distill" | "Distilled" | "Aging" | "Bottled";
+  notes: string;
+}
+
+const emptyBatch = (): Batch => ({
+  id: crypto.randomUUID(),
+  name: "",
+  category: "Whiskey",
+  startDate: new Date().toISOString().slice(0, 10),
+  volumeL: 25,
+  og: 1.06,
+  yeast: "",
+  fermentTemp: "22 °C",
+  readings: [],
+  status: "Fermenting",
+  notes: "",
+});
+
 function Index() {
+  const [tab, setTab] = useState<Tab>("batches");
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen">
+      <Header tab={tab} setTab={setTab} />
+      <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 sm:px-6 sm:pt-10">
+        {tab === "batches" && <BatchesView />}
+        {tab === "recipes" && <RecipesView />}
+        {tab === "calc" && <CalculatorsView />}
+      </main>
+      <footer className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
+        Still & Cask · Distiller's Companion · Data stays on your device
+      </footer>
     </div>
+  );
+}
+
+function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "batches", label: "Batches" },
+    { id: "recipes", label: "Recipes" },
+    { id: "calc", label: "Calculators" },
+  ];
+  return (
+    <header className="sticky top-0 z-10 border-b border-border/60 backdrop-blur-xl"
+      style={{ background: "oklch(0.16 0.015 60 / 0.75)" }}>
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex items-center gap-3">
+          <div className="grid h-11 w-11 place-items-center rounded-full btn-copper text-lg">
+            <span aria-hidden>⚗︎</span>
+          </div>
+          <div>
+            <div className="font-display text-xl font-semibold leading-none">
+              Still <span className="text-copper">&amp;</span> Cask
+            </div>
+            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1">
+              Distiller's Companion
+            </div>
+          </div>
+        </div>
+        <nav className="flex rounded-full border border-border/70 bg-card/50 p-1 text-sm">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`rounded-full px-4 py-1.5 font-medium transition ${
+                tab === t.id
+                  ? "btn-copper"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+/* ---------------- Batches ---------------- */
+
+function BatchesView() {
+  const [batches, setBatches] = useLocalStorage<Batch[]>("sc-batches", []);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const editing = batches.find((b) => b.id === editingId);
+
+  const upsert = (b: Batch) => {
+    setBatches((prev) => {
+      const exists = prev.some((p) => p.id === b.id);
+      return exists ? prev.map((p) => (p.id === b.id ? b : p)) : [b, ...prev];
+    });
+  };
+
+  const remove = (id: string) => {
+    setBatches((prev) => prev.filter((p) => p.id !== id));
+    if (editingId === id) setEditingId(null);
+  };
+
+  if (creating || editing) {
+    return (
+      <BatchEditor
+        initial={editing ?? emptyBatch()}
+        onSave={(b) => {
+          upsert(b);
+          setCreating(false);
+          setEditingId(null);
+        }}
+        onCancel={() => {
+          setCreating(false);
+          setEditingId(null);
+        }}
+        onDelete={editing ? () => remove(editing.id) : undefined}
+      />
+    );
+  }
+
+  return (
+    <section className="space-y-6">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold">Your Batches</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Log washes from mash to bottle. Track gravity, cuts, and aging.
+          </p>
+        </div>
+        <button onClick={() => setCreating(true)} className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold">
+          + New batch
+        </button>
+      </div>
+
+      {batches.length === 0 ? (
+        <EmptyState onCreate={() => setCreating(true)} />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {batches.map((b) => (
+            <BatchCard key={b.id} batch={b} onOpen={() => setEditingId(b.id)} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function EmptyState({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div className="surface-card rounded-2xl p-10 text-center">
+      <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full btn-copper text-2xl">⚗︎</div>
+      <h2 className="text-2xl font-semibold">Start your first wash</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+        Pick a recipe or start blank. Log your original gravity, track fermentation,
+        record your cuts, and note aging.
+      </p>
+      <button onClick={onCreate} className="btn-copper mt-6 rounded-lg px-5 py-2 text-sm font-semibold">
+        Create a batch
+      </button>
+    </div>
+  );
+}
+
+function BatchCard({ batch, onOpen }: { batch: Batch; onOpen: () => void }) {
+  const abv = batch.fg ? abvFromOgFg(batch.og, batch.fg) : potentialAbv(batch.og);
+  const statusColor: Record<Batch["status"], string> = {
+    Fermenting: "text-amber-300",
+    "Ready to distill": "text-orange-300",
+    Distilled: "text-primary",
+    Aging: "text-accent",
+    Bottled: "text-emerald-300",
+  };
+  return (
+    <button
+      onClick={onOpen}
+      className="surface-card group rounded-2xl p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-warm)]"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">{batch.category}</div>
+          <div className="mt-1 font-display text-xl font-semibold">{batch.name || "Untitled batch"}</div>
+        </div>
+        <span className={`text-xs font-medium ${statusColor[batch.status]}`}>● {batch.status}</span>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+        <Stat label="Volume" value={`${batch.volumeL} L`} />
+        <Stat label="OG" value={batch.og.toFixed(3)} />
+        <Stat label={batch.fg ? "ABV" : "Est. ABV"} value={`${abv.toFixed(1)}%`} />
+      </div>
+      <div className="mt-4 text-xs text-muted-foreground">Started {batch.startDate}</div>
+    </button>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-muted/40 px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="font-mono text-sm">{value}</div>
+    </div>
+  );
+}
+
+function BatchEditor({
+  initial,
+  onSave,
+  onCancel,
+  onDelete,
+}: {
+  initial: Batch;
+  onSave: (b: Batch) => void;
+  onCancel: () => void;
+  onDelete?: () => void;
+}) {
+  const [b, setB] = useState<Batch>(initial);
+  const update = <K extends keyof Batch>(k: K, v: Batch[K]) => setB((prev) => ({ ...prev, [k]: v }));
+
+  const abv = b.fg ? abvFromOgFg(b.og, b.fg) : potentialAbv(b.og);
+
+  const applyRecipe = (id: string) => {
+    const r = RECIPES.find((r) => r.id === id);
+    if (!r) return;
+    setB((prev) => ({
+      ...prev,
+      recipeId: r.id,
+      category: r.category,
+      name: prev.name || r.name,
+      og: r.targetOG,
+      yeast: r.yeast,
+      fermentTemp: r.fermentTemp,
+      notes: prev.notes || r.notes,
+    }));
+  };
+
+  const addReading = () =>
+    update("readings", [
+      ...b.readings,
+      { date: new Date().toISOString().slice(0, 10), sg: b.readings.length ? b.readings[b.readings.length - 1].sg : b.og },
+    ]);
+
+  return (
+    <section className="space-y-6">
+      <div className="flex items-center justify-between">
+        <button onClick={onCancel} className="text-sm text-muted-foreground hover:text-foreground">
+          ← Back
+        </button>
+        <div className="flex gap-2">
+          {onDelete && (
+            <button
+              onClick={() => {
+                if (confirm("Delete this batch?")) onDelete();
+              }}
+              className="rounded-lg border border-destructive/40 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"
+            >
+              Delete
+            </button>
+          )}
+          <button onClick={() => onSave(b)} className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold">
+            Save batch
+          </button>
+        </div>
+      </div>
+
+      <div className="surface-card space-y-5 rounded-2xl p-5 sm:p-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Batch name">
+            <input
+              value={b.name}
+              onChange={(e) => update("name", e.target.value)}
+              placeholder="e.g. Bourbon #3"
+              className="input"
+            />
+          </Field>
+          <Field label="Starter recipe (optional)">
+            <select
+              value={b.recipeId ?? ""}
+              onChange={(e) => (e.target.value ? applyRecipe(e.target.value) : update("recipeId", undefined))}
+              className="input"
+            >
+              <option value="">— None —</option>
+              {RECIPES.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Category">
+            <select
+              value={b.category}
+              onChange={(e) => update("category", e.target.value as SpiritCategory)}
+              className="input"
+            >
+              {(["Neutral", "Whiskey", "Rum", "Brandy", "Gin", "Agave"] as SpiritCategory[]).map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Status">
+            <select value={b.status} onChange={(e) => update("status", e.target.value as Batch["status"])} className="input">
+              {(["Fermenting", "Ready to distill", "Distilled", "Aging", "Bottled"] as Batch["status"][]).map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Start date">
+            <input type="date" value={b.startDate} onChange={(e) => update("startDate", e.target.value)} className="input" />
+          </Field>
+          <Field label="Volume (L)">
+            <input
+              type="number"
+              step="0.5"
+              value={b.volumeL}
+              onChange={(e) => update("volumeL", parseFloat(e.target.value) || 0)}
+              className="input"
+            />
+          </Field>
+          <Field label="Original gravity (OG)">
+            <input
+              type="number"
+              step="0.001"
+              value={b.og}
+              onChange={(e) => update("og", parseFloat(e.target.value) || 0)}
+              className="input"
+            />
+          </Field>
+          <Field label="Final gravity (FG)">
+            <input
+              type="number"
+              step="0.001"
+              value={b.fg ?? ""}
+              onChange={(e) => update("fg", e.target.value ? parseFloat(e.target.value) : undefined)}
+              placeholder="—"
+              className="input"
+            />
+          </Field>
+          <Field label="Yeast">
+            <input value={b.yeast} onChange={(e) => update("yeast", e.target.value)} className="input" placeholder="e.g. DADY" />
+          </Field>
+          <Field label="Ferment temp">
+            <input value={b.fermentTemp} onChange={(e) => update("fermentTemp", e.target.value)} className="input" />
+          </Field>
+        </div>
+
+        <div className="rounded-xl bg-muted/40 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                {b.fg ? "Actual ABV" : "Potential ABV"}
+              </div>
+              <div className="font-mono text-2xl text-copper">{abv.toFixed(2)}%</div>
+            </div>
+            <div className="text-right text-xs text-muted-foreground">
+              {b.fg ? `From OG ${b.og.toFixed(3)} → FG ${b.fg.toFixed(3)}` : `Based on OG ${b.og.toFixed(3)}`}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Gravity log */}
+      <div className="surface-card rounded-2xl p-5 sm:p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Gravity log</h2>
+          <button onClick={addReading} className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
+            + Add reading
+          </button>
+        </div>
+        {b.readings.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Track hydrometer readings to confirm fermentation is complete (three matching readings 24h apart).
+          </p>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {b.readings.map((r, i) => (
+              <div key={i} className="grid grid-cols-12 items-center gap-2 rounded-lg bg-muted/30 p-2">
+                <input
+                  type="date"
+                  value={r.date}
+                  onChange={(e) => {
+                    const next = [...b.readings];
+                    next[i] = { ...r, date: e.target.value };
+                    update("readings", next);
+                  }}
+                  className="input col-span-4 py-1.5"
+                />
+                <input
+                  type="number"
+                  step="0.001"
+                  value={r.sg}
+                  onChange={(e) => {
+                    const next = [...b.readings];
+                    next[i] = { ...r, sg: parseFloat(e.target.value) || 0 };
+                    update("readings", next);
+                  }}
+                  className="input col-span-3 py-1.5"
+                />
+                <input
+                  placeholder="Note"
+                  value={r.note ?? ""}
+                  onChange={(e) => {
+                    const next = [...b.readings];
+                    next[i] = { ...r, note: e.target.value };
+                    update("readings", next);
+                  }}
+                  className="input col-span-4 py-1.5"
+                />
+                <button
+                  onClick={() => update("readings", b.readings.filter((_, j) => j !== i))}
+                  className="col-span-1 text-muted-foreground hover:text-destructive"
+                  aria-label="Remove"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Cuts */}
+      <div className="surface-card rounded-2xl p-5 sm:p-6">
+        <h2 className="text-lg font-semibold">Cuts (mL collected)</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Foreshots go down the drain. Heads to redistill. Hearts to keep. Tails to save for the next spirit run.
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {(["foreshots", "heads", "hearts", "tails"] as const).map((k) => (
+            <Field key={k} label={k[0].toUpperCase() + k.slice(1)}>
+              <input
+                type="number"
+                value={b.cuts?.[k] ?? ""}
+                onChange={(e) =>
+                  update("cuts", { ...(b.cuts ?? {}), [k]: e.target.value ? parseFloat(e.target.value) : undefined })
+                }
+                className="input"
+                placeholder="0"
+              />
+            </Field>
+          ))}
+        </div>
+        <Field label="Cut notes" className="mt-4">
+          <textarea
+            rows={2}
+            value={b.cuts?.notes ?? ""}
+            onChange={(e) => update("cuts", { ...(b.cuts ?? {}), notes: e.target.value })}
+            className="input"
+            placeholder="Where you made each cut, ABV at collection jars, smells/tastes…"
+          />
+        </Field>
+      </div>
+
+      <div className="surface-card rounded-2xl p-5 sm:p-6">
+        <Field label="Batch notes">
+          <textarea
+            rows={5}
+            value={b.notes}
+            onChange={(e) => update("notes", e.target.value)}
+            className="input"
+            placeholder="Mash schedule, aging vessel, tasting notes…"
+          />
+        </Field>
+      </div>
+    </section>
+  );
+}
+
+function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+        {label}
+      </span>
+      {children}
+      <style>{`
+        .input { width: 100%; background: var(--input); border: 1px solid var(--border); color: var(--foreground);
+          border-radius: 0.5rem; padding: 0.55rem 0.75rem; font-size: 0.875rem; font-family: var(--font-mono); }
+        .input:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px oklch(0.72 0.15 55 / 0.2); }
+      `}</style>
+    </label>
+  );
+}
+
+/* ---------------- Recipes ---------------- */
+
+function RecipesView() {
+  const [filter, setFilter] = useState<SpiritCategory | "All">("All");
+  const categories: (SpiritCategory | "All")[] = ["All", "Neutral", "Whiskey", "Rum", "Brandy", "Gin", "Agave"];
+  const filtered = useMemo(
+    () => (filter === "All" ? RECIPES : RECIPES.filter((r) => r.category === filter)),
+    [filter],
+  );
+  const [open, setOpen] = useState<Recipe | null>(null);
+
+  if (open) return <RecipeDetail recipe={open} onBack={() => setOpen(null)} />;
+
+  return (
+    <section className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-semibold">Recipe Library</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Starting points for classic spirits. Adjust to your still and taste.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {categories.map((c) => (
+          <button
+            key={c}
+            onClick={() => setFilter(c)}
+            className={`rounded-full border px-3 py-1 text-xs uppercase tracking-widest transition ${
+              filter === c
+                ? "border-transparent btn-copper"
+                : "border-border/70 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {filtered.map((r) => (
+          <button
+            key={r.id}
+            onClick={() => setOpen(r)}
+            className="surface-card rounded-2xl p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-warm)]"
+          >
+            <div className="text-xs uppercase tracking-widest text-accent">{r.category}</div>
+            <h3 className="mt-2 font-display text-lg font-semibold">{r.name}</h3>
+            <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{r.description}</p>
+            <div className="mt-4 flex gap-4 font-mono text-xs text-muted-foreground">
+              <span>OG {r.targetOG.toFixed(3)}</span>
+              <span>FG {r.targetFG.toFixed(3)}</span>
+              <span>{potentialAbv(r.targetOG).toFixed(1)}% pot.</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RecipeDetail({ recipe, onBack }: { recipe: Recipe; onBack: () => void }) {
+  return (
+    <section className="space-y-6">
+      <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground">
+        ← All recipes
+      </button>
+      <div className="surface-card overflow-hidden rounded-2xl">
+        <div className="p-6 sm:p-8" style={{ background: "var(--gradient-copper)" }}>
+          <div className="text-xs uppercase tracking-[0.25em] text-primary-foreground/80">{recipe.category}</div>
+          <h1 className="mt-2 font-display text-3xl font-semibold text-primary-foreground">{recipe.name}</h1>
+          <p className="mt-3 max-w-2xl text-sm text-primary-foreground/90">{recipe.description}</p>
+        </div>
+        <div className="grid gap-6 p-6 sm:grid-cols-2 sm:p-8">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Ingredients</h3>
+            <ul className="mt-3 divide-y divide-border/60">
+              {recipe.ingredients.map((i) => (
+                <li key={i.name} className="flex justify-between py-2 text-sm">
+                  <span>{i.name}</span>
+                  <span className="font-mono text-muted-foreground">{i.amount}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Fermentation</h3>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <Metric label="Target OG" value={recipe.targetOG.toFixed(3)} />
+                <Metric label="Target FG" value={recipe.targetFG.toFixed(3)} />
+                <Metric label="Yeast" value={recipe.yeast} />
+                <Metric label="Temp" value={recipe.fermentTemp} />
+                <Metric label="Time" value={recipe.fermentDays} />
+                <Metric label="Potential ABV" value={`${potentialAbv(recipe.targetOG).toFixed(1)}%`} />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Notes</h3>
+              <p className="mt-2 text-sm leading-relaxed text-foreground/90">{recipe.notes}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-muted/40 px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-0.5 font-mono text-sm">{value}</div>
+    </div>
+  );
+}
+
+/* ---------------- Calculators ---------------- */
+
+function CalculatorsView() {
+  return (
+    <section className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-semibold">Calculators</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Quick tools for the still shed.</p>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AbvCalc />
+        <DilutionCalc />
+        <TempCorrectCalc />
+        <CutsCalc />
+      </div>
+    </section>
+  );
+}
+
+function CalcCard({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+  return (
+    <div className="surface-card space-y-4 rounded-2xl p-5 sm:p-6">
+      <div>
+        <h3 className="font-display text-xl font-semibold">{title}</h3>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Result({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg p-4" style={{ background: "var(--gradient-copper)" }}>
+      <div className="text-[10px] uppercase tracking-widest text-primary-foreground/80">{label}</div>
+      <div className="font-mono text-2xl font-semibold text-primary-foreground">{value}</div>
+    </div>
+  );
+}
+
+function AbvCalc() {
+  const [og, setOg] = useState(1.06);
+  const [fg, setFg] = useState(1.0);
+  const abv = abvFromOgFg(og, fg);
+  return (
+    <CalcCard title="ABV from Gravity" subtitle="Wash strength from OG and FG readings">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="OG">
+          <input type="number" step="0.001" value={og} onChange={(e) => setOg(+e.target.value || 0)} className="input" />
+        </Field>
+        <Field label="FG">
+          <input type="number" step="0.001" value={fg} onChange={(e) => setFg(+e.target.value || 0)} className="input" />
+        </Field>
+      </div>
+      <Result label="Alcohol by volume" value={`${abv.toFixed(2)}%`} />
+    </CalcCard>
+  );
+}
+
+function DilutionCalc() {
+  const [abv, setAbv] = useState(75);
+  const [vol, setVol] = useState(1000);
+  const [target, setTarget] = useState(40);
+  const water = waterToDilute(abv, vol, target);
+  return (
+    <CalcCard title="Proofing / Dilution" subtitle="Water to add to bring distillate to bottling strength">
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Current %">
+          <input type="number" value={abv} onChange={(e) => setAbv(+e.target.value || 0)} className="input" />
+        </Field>
+        <Field label="Volume (mL)">
+          <input type="number" value={vol} onChange={(e) => setVol(+e.target.value || 0)} className="input" />
+        </Field>
+        <Field label="Target %">
+          <input type="number" value={target} onChange={(e) => setTarget(+e.target.value || 0)} className="input" />
+        </Field>
+      </div>
+      <Result label="Water to add" value={`${water.toFixed(0)} mL`} />
+      <p className="text-xs text-muted-foreground">
+        Add slowly. Rest 24h before final bottling to let the spirit re-integrate.
+      </p>
+    </CalcCard>
+  );
+}
+
+function TempCorrectCalc() {
+  const [sg, setSg] = useState(1.05);
+  const [temp, setTemp] = useState(25);
+  const corrected = correctSG(sg, temp);
+  return (
+    <CalcCard title="Hydrometer Temp Correction" subtitle="Adjust SG reading for wash temperature (calibrated 20 °C)">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Read SG">
+          <input type="number" step="0.001" value={sg} onChange={(e) => setSg(+e.target.value || 0)} className="input" />
+        </Field>
+        <Field label="Temp (°C)">
+          <input type="number" value={temp} onChange={(e) => setTemp(+e.target.value || 0)} className="input" />
+        </Field>
+      </div>
+      <Result label="Corrected SG" value={corrected.toFixed(4)} />
+    </CalcCard>
+  );
+}
+
+function CutsCalc() {
+  const [vol, setVol] = useState(25);
+  const [abv, setAbv] = useState(8);
+  const [collectAbv, setCollectAbv] = useState(70);
+  const cuts = suggestCuts(vol, abv);
+  const distillate = estimateDistillate(vol, abv, collectAbv);
+  return (
+    <CalcCard title="Spirit Run Estimator" subtitle="Rough distillate and cut sizes from a wash">
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Wash L">
+          <input type="number" value={vol} onChange={(e) => setVol(+e.target.value || 0)} className="input" />
+        </Field>
+        <Field label="Wash %">
+          <input type="number" value={abv} onChange={(e) => setAbv(+e.target.value || 0)} className="input" />
+        </Field>
+        <Field label="Collect %">
+          <input type="number" value={collectAbv} onChange={(e) => setCollectAbv(+e.target.value || 0)} className="input" />
+        </Field>
+      </div>
+      <Result label="Estimated distillate" value={`${distillate.toFixed(2)} L @ ${collectAbv}%`} />
+      <div className="grid grid-cols-4 gap-2 text-center">
+        {(["foreshots", "heads", "hearts", "tails"] as const).map((k) => (
+          <div key={k} className="rounded-lg bg-muted/40 p-3">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</div>
+            <div className="mt-1 font-mono text-sm">{cuts[k]} mL</div>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Guideline only — always cut by nose and taste, jar by jar.
+      </p>
+    </CalcCard>
   );
 }
