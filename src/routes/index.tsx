@@ -75,7 +75,7 @@ function Index() {
         {tab === "calc" && <CalculatorsView />}
       </main>
       <footer className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
-        Still & Cask · Distiller's Companion · Data stays on your device
+        Ego's Distilling · Data stays on your device
       </footer>
     </div>
   );
@@ -97,10 +97,10 @@ function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
           </div>
           <div>
             <div className="font-display text-xl font-semibold leading-none">
-              Still <span className="text-copper">&amp;</span> Cask
+              Ego's Distilling
             </div>
             <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1">
-              Distiller's Companion
+              Spirit batch tracker
             </div>
           </div>
         </div>
