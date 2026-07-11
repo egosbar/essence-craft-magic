@@ -103,7 +103,7 @@
   color: var(--primary-foreground);
   box-shadow: var(--shadow-warm), var(--shadow-inset);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-@utility btn-copper:hover {
-  transform: translateY(-1px);
+  &:hover {
+    transform: translateY(-1px);
+  }
 }
