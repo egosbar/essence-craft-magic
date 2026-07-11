@@ -1,4 +1,4 @@
-export type SpiritCategory = "Neutral" | "Whiskey" | "Rum" | "Brandy" | "Gin" | "Agave";
+export type SpiritCategory = "Neutral" | "Whiskey" | "Rum" | "Brandy" | "Gin" | "Agave" | "Custom";
 
 export interface Recipe {
   id: string;
@@ -12,6 +12,7 @@ export interface Recipe {
   fermentTemp: string;
   fermentDays: string;
   notes: string;
+  isCustom?: boolean;
 }
 
 export const RECIPES: Recipe[] = [
