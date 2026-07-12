@@ -1141,7 +1141,7 @@ function InventoryView() {
         <div>
           <h1 className="text-3xl font-semibold">Inventory</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Track grains, yeast, additives, bottles, and shed supplies.
+            Track grains, ingredients, yeast, additives, bottles, and shed supplies.
           </p>
         </div>
         <button onClick={() => setCreating(true)} className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold">
