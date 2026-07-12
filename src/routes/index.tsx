@@ -73,6 +73,7 @@ function Index() {
         {tab === "batches" && <BatchesView />}
         {tab === "recipes" && <RecipesView />}
         {tab === "calc" && <CalculatorsView />}
+        {tab === "inventory" && <InventoryView />}
       </main>
       <footer className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
         Ego's Distilling · Data stays on your device
