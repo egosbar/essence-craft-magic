@@ -1063,7 +1063,7 @@ function CutsCalc() {
 interface InventoryItem {
   id: string;
   name: string;
-  category: "Grain" | "Yeast" | "Additives" | "Equipment" | "Bottles" | "Other";
+  category: "Grain" | "Ingredients" | "Yeast" | "Additives" | "Equipment" | "Bottles" | "Other";
   amount: string;
   lowStock: string;
   ordered: boolean;
