@@ -1231,7 +1231,7 @@ function InventoryEditor({
   const [item, setItem] = useState<InventoryItem>(initial);
   const update = <K extends keyof InventoryItem>(k: K, v: InventoryItem[K]) => setItem((prev) => ({ ...prev, [k]: v }));
 
-  const categories: InventoryItem["category"][] = ["Grain", "Yeast", "Additives", "Equipment", "Bottles", "Other"];
+  const categories: InventoryItem["category"][] = ["Grain", "Ingredients", "Yeast", "Additives", "Equipment", "Bottles", "Other"];
 
   return (
     <section className="space-y-6">
