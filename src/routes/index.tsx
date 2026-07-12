@@ -1066,6 +1066,7 @@ interface InventoryItem {
   category: "Grain" | "Yeast" | "Additives" | "Equipment" | "Bottles" | "Other";
   amount: string;
   lowStock: string;
+  ordered: boolean;
   notes: string;
 }
 
@@ -1075,8 +1076,20 @@ const emptyItem = (): InventoryItem => ({
   category: "Grain",
   amount: "",
   lowStock: "",
+  ordered: false,
   notes: "",
 });
+
+function parseAmount(value: string): number {
+  const match = value.trim().match(/^-?\d+(\.\d+)?/);
+  return match ? parseFloat(match[0]) : NaN;
+}
+
+function isLowStock(item: InventoryItem): boolean {
+  const current = parseAmount(item.amount);
+  const threshold = parseAmount(item.lowStock);
+  return !isNaN(current) && !isNaN(threshold) && current <= threshold;
+}
 
 function InventoryView() {
   const [items, setItems] = useLocalStorage<InventoryItem[]>("sc-inventory", []);
@@ -1096,6 +1109,13 @@ function InventoryView() {
     setItems((prev) => prev.filter((p) => p.id !== id));
     if (editingId === id) setEditingId(null);
   };
+
+  const toggleOrdered = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setItems((prev) => prev.map((p) => (p.id === id ? { ...p, ordered: !p.ordered } : p)));
+  };
+
+  const lowStockItems = items.filter(isLowStock);
 
   if (creating || editing) {
     return (
@@ -1129,6 +1149,16 @@ function InventoryView() {
         </button>
       </div>
 
+      {lowStockItems.length > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
+          <span className="text-lg">⚠</span>
+          <div>
+            <span className="font-semibold text-destructive">{lowStockItems.length} item{lowStockItems.length === 1 ? "" : "s"} low on stock</span>
+            <span className="text-muted-foreground"> — {lowStockItems.map((i) => i.name || "Untitled").join(", ")}</span>
+          </div>
+        </div>
+      )}
+
       {items.length === 0 ? (
         <div className="surface-card rounded-2xl p-10 text-center">
           <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full btn-copper text-2xl">📦</div>
@@ -1146,16 +1176,33 @@ function InventoryView() {
             <button
               key={item.id}
               onClick={() => setEditingId(item.id)}
-              className="surface-card group rounded-2xl p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-warm)]"
+              className="surface-card group relative rounded-2xl p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-warm)]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-xs uppercase tracking-widest text-muted-foreground">{item.category}</div>
                   <div className="mt-1 font-display text-xl font-semibold">{item.name || "Untitled item"}</div>
                 </div>
-                {item.lowStock && item.amount && Number(item.amount) <= Number(item.lowStock) && (
-                  <span className="text-xs font-medium text-destructive">Low</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {isLowStock(item) && (
+                    <span className="rounded-md bg-destructive/15 px-2 py-1 text-xs font-semibold text-destructive">
+                      Low stock
+                    </span>
+                  )}
+                  <span
+                    onClick={(e) => toggleOrdered(e, item.id)}
+                    role="checkbox"
+                    aria-checked={item.ordered}
+                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 text-sm transition ${
+                      item.ordered
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : "border-muted-foreground/40 text-transparent hover:border-emerald-400/70"
+                    }`}
+                    title={item.ordered ? "Ordered" : "Mark as ordered"}
+                  >
+                    ✓
+                  </span>
+                </div>
               </div>
               <div className="mt-4 rounded-lg bg-muted/40 px-3 py-2">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Stock</div>
@@ -1245,6 +1292,21 @@ function InventoryEditor({
               className="input"
             />
           </Field>
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+            <span
+              role="checkbox"
+              aria-checked={item.ordered}
+              onClick={() => update("ordered", !item.ordered)}
+              className={`grid h-6 w-6 shrink-0 place-items-center rounded-md border-2 text-sm transition ${
+                item.ordered
+                  ? "border-emerald-500 bg-emerald-500 text-white"
+                  : "border-muted-foreground/40 text-transparent hover:border-emerald-400/70"
+              }`}
+            >
+              ✓
+            </span>
+            <span className="text-sm font-medium">Ordered</span>
+          </label>
         </div>
         <Field label="Notes">
           <textarea
