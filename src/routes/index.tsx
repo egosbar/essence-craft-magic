@@ -1063,7 +1063,7 @@ function CutsCalc() {
 interface InventoryItem {
   id: string;
   name: string;
-  category: "Grain" | "Yeast" | "Additives" | "Equipment" | "Bottles" | "Other";
+  category: "Grain" | "Ingredients" | "Yeast" | "Additives" | "Equipment" | "Bottles" | "Other";
   amount: string;
   lowStock: string;
   ordered: boolean;
@@ -1141,7 +1141,7 @@ function InventoryView() {
         <div>
           <h1 className="text-3xl font-semibold">Inventory</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Track grains, yeast, additives, bottles, and shed supplies.
+            Track grains, ingredients, yeast, additives, bottles, and shed supplies.
           </p>
         </div>
         <button onClick={() => setCreating(true)} className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold">
@@ -1164,7 +1164,7 @@ function InventoryView() {
           <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full btn-copper text-2xl">📦</div>
           <h2 className="text-2xl font-semibold">No inventory yet</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Log your grains, yeast, nutrients, bottles, and anything else you need for the next run.
+            Log your grains, ingredients, yeast, nutrients, bottles, and anything else you need for the next run.
           </p>
           <button onClick={() => setCreating(true)} className="btn-copper mt-6 rounded-lg px-5 py-2 text-sm font-semibold">
             Add first item
@@ -1231,7 +1231,7 @@ function InventoryEditor({
   const [item, setItem] = useState<InventoryItem>(initial);
   const update = <K extends keyof InventoryItem>(k: K, v: InventoryItem[K]) => setItem((prev) => ({ ...prev, [k]: v }));
 
-  const categories: InventoryItem["category"][] = ["Grain", "Yeast", "Additives", "Equipment", "Bottles", "Other"];
+  const categories: InventoryItem["category"][] = ["Grain", "Ingredients", "Yeast", "Additives", "Equipment", "Bottles", "Other"];
 
   return (
     <section className="space-y-6">
