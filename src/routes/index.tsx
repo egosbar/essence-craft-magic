@@ -1066,6 +1066,7 @@ interface InventoryItem {
   category: "Grain" | "Yeast" | "Additives" | "Equipment" | "Bottles" | "Other";
   amount: string;
   lowStock: string;
+  ordered: boolean;
   notes: string;
 }
 
@@ -1075,8 +1076,20 @@ const emptyItem = (): InventoryItem => ({
   category: "Grain",
   amount: "",
   lowStock: "",
+  ordered: false,
   notes: "",
 });
+
+function parseAmount(value: string): number {
+  const match = value.trim().match(/^-?\d+(\.\d+)?/);
+  return match ? parseFloat(match[0]) : NaN;
+}
+
+function isLowStock(item: InventoryItem): boolean {
+  const current = parseAmount(item.amount);
+  const threshold = parseAmount(item.lowStock);
+  return !isNaN(current) && !isNaN(threshold) && current <= threshold;
+}
 
 function InventoryView() {
   const [items, setItems] = useLocalStorage<InventoryItem[]>("sc-inventory", []);
