@@ -1164,7 +1164,7 @@ function InventoryView() {
           <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full btn-copper text-2xl">📦</div>
           <h2 className="text-2xl font-semibold">No inventory yet</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Log your grains, yeast, nutrients, bottles, and anything else you need for the next run.
+            Log your grains, ingredients, yeast, nutrients, bottles, and anything else you need for the next run.
           </p>
           <button onClick={() => setCreating(true)} className="btn-copper mt-6 rounded-lg px-5 py-2 text-sm font-semibold">
             Add first item
