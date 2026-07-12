@@ -87,6 +87,7 @@ function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
     { id: "batches", label: "Batches" },
     { id: "recipes", label: "Recipes" },
     { id: "calc", label: "Calculators" },
+    { id: "inventory", label: "Inventory" },
   ];
   return (
     <header className="sticky top-0 z-10 border-b border-border/60 backdrop-blur-xl"
