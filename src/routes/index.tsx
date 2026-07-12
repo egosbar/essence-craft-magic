@@ -1057,3 +1057,205 @@ function CutsCalc() {
     </CalcCard>
   );
 }
+
+/* ---------------- Inventory ---------------- */
+
+interface InventoryItem {
+  id: string;
+  name: string;
+  category: "Grain" | "Yeast" | "Additives" | "Equipment" | "Bottles" | "Other";
+  amount: string;
+  lowStock: string;
+  notes: string;
+}
+
+const emptyItem = (): InventoryItem => ({
+  id: crypto.randomUUID(),
+  name: "",
+  category: "Grain",
+  amount: "",
+  lowStock: "",
+  notes: "",
+});
+
+function InventoryView() {
+  const [items, setItems] = useLocalStorage<InventoryItem[]>("sc-inventory", []);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const editing = items.find((i) => i.id === editingId);
+
+  const upsert = (item: InventoryItem) => {
+    setItems((prev) => {
+      const exists = prev.some((p) => p.id === item.id);
+      return exists ? prev.map((p) => (p.id === item.id ? item : p)) : [item, ...prev];
+    });
+  };
+
+  const remove = (id: string) => {
+    setItems((prev) => prev.filter((p) => p.id !== id));
+    if (editingId === id) setEditingId(null);
+  };
+
+  if (creating || editing) {
+    return (
+      <InventoryEditor
+        initial={editing ?? emptyItem()}
+        onSave={(item) => {
+          upsert(item);
+          setCreating(false);
+          setEditingId(null);
+        }}
+        onCancel={() => {
+          setCreating(false);
+          setEditingId(null);
+        }}
+        onDelete={editing ? () => remove(editing.id) : undefined}
+      />
+    );
+  }
+
+  return (
+    <section className="space-y-6">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold">Inventory</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track grains, yeast, additives, bottles, and shed supplies.
+          </p>
+        </div>
+        <button onClick={() => setCreating(true)} className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold">
+          + Add item
+        </button>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="surface-card rounded-2xl p-10 text-center">
+          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full btn-copper text-2xl">📦</div>
+          <h2 className="text-2xl font-semibold">No inventory yet</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+            Log your grains, yeast, nutrients, bottles, and anything else you need for the next run.
+          </p>
+          <button onClick={() => setCreating(true)} className="btn-copper mt-6 rounded-lg px-5 py-2 text-sm font-semibold">
+            Add first item
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setEditingId(item.id)}
+              className="surface-card group rounded-2xl p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-warm)]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs uppercase tracking-widest text-muted-foreground">{item.category}</div>
+                  <div className="mt-1 font-display text-xl font-semibold">{item.name || "Untitled item"}</div>
+                </div>
+                {item.lowStock && item.amount && Number(item.amount) <= Number(item.lowStock) && (
+                  <span className="text-xs font-medium text-destructive">Low</span>
+                )}
+              </div>
+              <div className="mt-4 rounded-lg bg-muted/40 px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Stock</div>
+                <div className="font-mono text-sm">{item.amount || "—"}</div>
+              </div>
+              {item.notes && <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{item.notes}</p>}
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function InventoryEditor({
+  initial,
+  onSave,
+  onCancel,
+  onDelete,
+}: {
+  initial: InventoryItem;
+  onSave: (item: InventoryItem) => void;
+  onCancel: () => void;
+  onDelete?: () => void;
+}) {
+  const [item, setItem] = useState<InventoryItem>(initial);
+  const update = <K extends keyof InventoryItem>(k: K, v: InventoryItem[K]) => setItem((prev) => ({ ...prev, [k]: v }));
+
+  const categories: InventoryItem["category"][] = ["Grain", "Yeast", "Additives", "Equipment", "Bottles", "Other"];
+
+  return (
+    <section className="space-y-6">
+      <div className="flex items-center justify-between">
+        <button onClick={onCancel} className="text-sm text-muted-foreground hover:text-foreground">
+          ← Back
+        </button>
+        <div className="flex gap-2">
+          {onDelete && (
+            <button
+              onClick={() => {
+                if (confirm("Delete this item?")) onDelete();
+              }}
+              className="rounded-lg border border-destructive/40 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"
+            >
+              Delete
+            </button>
+          )}
+          <button onClick={() => onSave(item)} className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold">
+            Save item
+          </button>
+        </div>
+      </div>
+
+      <div className="surface-card space-y-5 rounded-2xl p-5 sm:p-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Item name">
+            <input
+              value={item.name}
+              onChange={(e) => update("name", e.target.value)}
+              placeholder="e.g. Flaked maize"
+              className="input"
+            />
+          </Field>
+          <Field label="Category">
+            <select value={item.category} onChange={(e) => update("category", e.target.value as InventoryItem["category"])} className="input">
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Current stock">
+            <input
+              value={item.amount}
+              onChange={(e) => update("amount", e.target.value)}
+              placeholder="e.g. 25 kg"
+              className="input"
+            />
+          </Field>
+          <Field label="Low-stock threshold">
+            <input
+              type="number"
+              value={item.lowStock}
+              onChange={(e) => update("lowStock", e.target.value)}
+              placeholder="e.g. 5"
+              className="input"
+            />
+          </Field>
+        </div>
+        <Field label="Notes">
+          <textarea
+            rows={4}
+            value={item.notes}
+            onChange={(e) => update("notes", e.target.value)}
+            className="input"
+            placeholder="Supplier, batch, storage location, reorder link…"
+          />
+        </Field>
+      </div>
+    </section>
+  );
+}
