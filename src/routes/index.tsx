@@ -15,7 +15,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Tab = "batches" | "recipes" | "calc";
+type Tab = "batches" | "recipes" | "calc" | "inventory";
 
 interface GravityReading {
   date: string;
