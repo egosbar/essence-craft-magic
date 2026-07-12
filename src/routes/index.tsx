@@ -1292,6 +1292,21 @@ function InventoryEditor({
               className="input"
             />
           </Field>
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+            <span
+              role="checkbox"
+              aria-checked={item.ordered}
+              onClick={() => update("ordered", !item.ordered)}
+              className={`grid h-6 w-6 shrink-0 place-items-center rounded-md border-2 text-sm transition ${
+                item.ordered
+                  ? "border-emerald-500 bg-emerald-500 text-white"
+                  : "border-muted-foreground/40 text-transparent hover:border-emerald-400/70"
+              }`}
+            >
+              ✓
+            </span>
+            <span className="text-sm font-medium">Ordered</span>
+          </label>
         </div>
         <Field label="Notes">
           <textarea
