@@ -38,6 +38,7 @@ interface Batch {
   recipeId?: string;
   category: SpiritCategory;
   startDate: string;
+  yeastPitchedAt?: string;
   volumeL: number;
   og: number;
   fg?: number;
