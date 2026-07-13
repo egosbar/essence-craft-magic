@@ -266,6 +266,9 @@ function BatchCard({ batch, onOpen }: { batch: Batch; onOpen: () => void }) {
         <Stat label={batch.fg ? "ABV" : "Est. ABV"} value={`${abv.toFixed(1)}%`} />
       </div>
       <div className="mt-4 text-xs text-muted-foreground">Started {batch.startDate}</div>
+      {elapsed && batch.status === "Fermenting" && (
+        <div className="mt-1 text-xs text-amber-300">Fermenting: {elapsed} since pitch</div>
+      )}
     </button>
   );
 }
