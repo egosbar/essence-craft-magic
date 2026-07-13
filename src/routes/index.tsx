@@ -47,6 +47,9 @@ interface Batch {
   readings: GravityReading[];
   cuts?: CutLog;
   status: "Fermenting" | "Ready to distill" | "Distilled" | "Aging" | "Bottled";
+  safetyVentilation?: boolean;
+  safetyCooling?: boolean;
+  safetyPressure?: boolean;
   notes: string;
 }
 
