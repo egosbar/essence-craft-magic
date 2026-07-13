@@ -239,6 +239,8 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 
 function BatchCard({ batch, onOpen }: { batch: Batch; onOpen: () => void }) {
   const abv = batch.fg ? abvFromOgFg(batch.og, batch.fg) : potentialAbv(batch.og);
+  const now = useNow();
+  const elapsed = formatElapsedSince(batch.yeastPitchedAt, now);
   const statusColor: Record<Batch["status"], string> = {
     Fermenting: "text-amber-300",
     "Ready to distill": "text-orange-300",
