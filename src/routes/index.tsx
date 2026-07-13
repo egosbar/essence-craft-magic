@@ -421,7 +421,27 @@ function BatchEditor({
           <Field label="Ferment temp">
             <input value={b.fermentTemp} onChange={(e) => update("fermentTemp", e.target.value)} className="input" />
           </Field>
+          <Field label="Yeast pitched (date & time)">
+            <div className="flex gap-2">
+              <input
+                type="datetime-local"
+                value={b.yeastPitchedAt ?? ""}
+                onChange={(e) => update("yeastPitchedAt", e.target.value || undefined)}
+                className="input flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => update("yeastPitchedAt", localDatetimeNow())}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted"
+              >
+                Now
+              </button>
+            </div>
+          </Field>
         </div>
+
+        <FermentElapsed pitchedAt={b.yeastPitchedAt} />
+
 
         <div className="rounded-xl bg-muted/40 p-4">
           <div className="flex items-center justify-between">
