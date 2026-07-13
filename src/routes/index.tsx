@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RECIPES, type Recipe, type SpiritCategory } from "@/lib/recipes";
 import {
   abvFromOgFg,
@@ -38,6 +38,7 @@ interface Batch {
   recipeId?: string;
   category: SpiritCategory;
   startDate: string;
+  yeastPitchedAt?: string;
   volumeL: number;
   og: number;
   fg?: number;
@@ -62,6 +63,51 @@ const emptyBatch = (): Batch => ({
   status: "Fermenting",
   notes: "",
 });
+
+function useNow(intervalMs = 60_000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
+function formatElapsedSince(iso: string | undefined, now: number): string | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (isNaN(t)) return null;
+  const ms = Math.max(0, now - t);
+  const days = Math.floor(ms / 86_400_000);
+  const hours = Math.floor((ms % 86_400_000) / 3_600_000);
+  const mins = Math.floor((ms % 3_600_000) / 60_000);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+function localDatetimeNow(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function FermentElapsed({ pitchedAt }: { pitchedAt?: string }) {
+  const now = useNow(60_000);
+  const elapsed = formatElapsedSince(pitchedAt, now);
+  if (!pitchedAt) return null;
+  const pitchedDate = new Date(pitchedAt);
+  return (
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+      <div className="text-[10px] uppercase tracking-widest text-amber-300/80">Fermenting — elapsed since yeast pitch</div>
+      <div className="mt-1 font-mono text-2xl text-amber-200">{elapsed ?? "—"}</div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        Pitched {isNaN(pitchedDate.getTime()) ? pitchedAt : pitchedDate.toLocaleString()}
+      </div>
+    </div>
+  );
+}
+
 
 function Index() {
   const [tab, setTab] = useState<Tab>("batches");
@@ -210,6 +256,8 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 
 function BatchCard({ batch, onOpen }: { batch: Batch; onOpen: () => void }) {
   const abv = batch.fg ? abvFromOgFg(batch.og, batch.fg) : potentialAbv(batch.og);
+  const now = useNow();
+  const elapsed = formatElapsedSince(batch.yeastPitchedAt, now);
   const statusColor: Record<Batch["status"], string> = {
     Fermenting: "text-amber-300",
     "Ready to distill": "text-orange-300",
@@ -235,6 +283,9 @@ function BatchCard({ batch, onOpen }: { batch: Batch; onOpen: () => void }) {
         <Stat label={batch.fg ? "ABV" : "Est. ABV"} value={`${abv.toFixed(1)}%`} />
       </div>
       <div className="mt-4 text-xs text-muted-foreground">Started {batch.startDate}</div>
+      {elapsed && batch.status === "Fermenting" && (
+        <div className="mt-1 text-xs text-amber-300">Fermenting: {elapsed} since pitch</div>
+      )}
     </button>
   );
 }
@@ -387,7 +438,27 @@ function BatchEditor({
           <Field label="Ferment temp">
             <input value={b.fermentTemp} onChange={(e) => update("fermentTemp", e.target.value)} className="input" />
           </Field>
+          <Field label="Yeast pitched (date & time)">
+            <div className="flex gap-2">
+              <input
+                type="datetime-local"
+                value={b.yeastPitchedAt ?? ""}
+                onChange={(e) => update("yeastPitchedAt", e.target.value || undefined)}
+                className="input flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => update("yeastPitchedAt", localDatetimeNow())}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted"
+              >
+                Now
+              </button>
+            </div>
+          </Field>
         </div>
+
+        <FermentElapsed pitchedAt={b.yeastPitchedAt} />
+
 
         <div className="rounded-xl bg-muted/40 p-4">
           <div className="flex items-center justify-between">
