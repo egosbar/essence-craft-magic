@@ -47,6 +47,9 @@ interface Batch {
   readings: GravityReading[];
   cuts?: CutLog;
   status: "Fermenting" | "Ready to distill" | "Distilled" | "Aging" | "Bottled";
+  safetyVentilation?: boolean;
+  safetyCooling?: boolean;
+  safetyPressure?: boolean;
   notes: string;
 }
 
@@ -311,7 +314,18 @@ function BatchEditor({
   onDelete?: () => void;
 }) {
   const [b, setB] = useState<Batch>(initial);
+  const [safetyAlert, setSafetyAlert] = useState(false);
   const update = <K extends keyof Batch>(k: K, v: Batch[K]) => setB((prev) => ({ ...prev, [k]: v }));
+
+  const safetyCleared = !!(b.safetyVentilation && b.safetyCooling && b.safetyPressure);
+  const handleStartDistilling = () => {
+    if (!safetyCleared) {
+      setSafetyAlert(true);
+      return;
+    }
+    setSafetyAlert(false);
+    setB((prev) => ({ ...prev, status: "Distilled" }));
+  };
 
   const abv = b.fg ? abvFromOgFg(b.og, b.fg) : potentialAbv(b.og);
 
@@ -359,7 +373,75 @@ function BatchEditor({
         </div>
       </div>
 
+      {/* Pre-Flight Safety Check */}
+      <div className="surface-card rounded-2xl border border-destructive/30 p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-destructive">Pre-Flight Safety Check</div>
+            <h2 className="mt-1 font-display text-lg font-semibold">Required before distilling</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              All three interlocks must be confirmed on the rig before you start the run.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleStartDistilling}
+            aria-disabled={!safetyCleared}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+              safetyCleared
+                ? "btn-copper"
+                : "cursor-not-allowed border border-border bg-muted/40 text-muted-foreground opacity-60"
+            }`}
+          >
+            Start Distilling
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          {(
+            [
+              { key: "safetyVentilation", label: "Ventilation Confirmed" },
+              { key: "safetyCooling", label: "Cooling Flow Verified" },
+              { key: "safetyPressure", label: "Pressure Relief Path Clear" },
+            ] as { key: "safetyVentilation" | "safetyCooling" | "safetyPressure"; label: string }[]
+          ).map((item) => {
+            const checked = !!b[item.key];
+            return (
+              <label
+                key={item.key}
+                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                  checked
+                    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-200"
+                    : "border-border bg-muted/30 hover:bg-muted/50"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    update(item.key, e.target.checked);
+                    if (e.target.checked) setSafetyAlert(false);
+                  }}
+                  className="h-4 w-4 accent-emerald-500"
+                />
+                <span>{item.label}</span>
+              </label>
+            );
+          })}
+        </div>
+
+        {safetyAlert && !safetyCleared && (
+          <div
+            role="alert"
+            className="mt-4 rounded-lg border-2 border-destructive bg-destructive/15 px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest text-destructive"
+          >
+            RED FLAG: SAFETY INTERLOCK NOT CLEARED
+          </div>
+        )}
+      </div>
+
       <div className="surface-card space-y-5 rounded-2xl p-5 sm:p-6">
+
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Batch name">
             <input
