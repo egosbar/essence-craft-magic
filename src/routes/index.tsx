@@ -314,7 +314,18 @@ function BatchEditor({
   onDelete?: () => void;
 }) {
   const [b, setB] = useState<Batch>(initial);
+  const [safetyAlert, setSafetyAlert] = useState(false);
   const update = <K extends keyof Batch>(k: K, v: Batch[K]) => setB((prev) => ({ ...prev, [k]: v }));
+
+  const safetyCleared = !!(b.safetyVentilation && b.safetyCooling && b.safetyPressure);
+  const handleStartDistilling = () => {
+    if (!safetyCleared) {
+      setSafetyAlert(true);
+      return;
+    }
+    setSafetyAlert(false);
+    setB((prev) => ({ ...prev, status: "Distilled" }));
+  };
 
   const abv = b.fg ? abvFromOgFg(b.og, b.fg) : potentialAbv(b.og);
 
