@@ -106,6 +106,8 @@ function FermentElapsed({ pitchedAt }: { pitchedAt?: string }) {
       </div>
     </div>
   );
+}
+
 
 function Index() {
   const [tab, setTab] = useState<Tab>("batches");
