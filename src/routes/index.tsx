@@ -92,6 +92,21 @@ function localDatetimeNow(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function FermentElapsed({ pitchedAt }: { pitchedAt?: string }) {
+  const now = useNow(60_000);
+  const elapsed = formatElapsedSince(pitchedAt, now);
+  if (!pitchedAt) return null;
+  const pitchedDate = new Date(pitchedAt);
+  return (
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+      <div className="text-[10px] uppercase tracking-widest text-amber-300/80">Fermenting — elapsed since yeast pitch</div>
+      <div className="mt-1 font-mono text-2xl text-amber-200">{elapsed ?? "—"}</div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        Pitched {isNaN(pitchedDate.getTime()) ? pitchedAt : pitchedDate.toLocaleString()}
+      </div>
+    </div>
+  );
+
 function Index() {
   const [tab, setTab] = useState<Tab>("batches");
 
