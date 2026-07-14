@@ -10,10 +10,19 @@ import {
   waterToDilute,
 } from "@/lib/distilling";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { LoginGate } from "@/components/LoginGate";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: GatedIndex,
 });
+
+function GatedIndex() {
+  return (
+    <LoginGate>
+      <Index />
+    </LoginGate>
+  );
+}
 
 type Tab = "batches" | "recipes" | "calc" | "inventory";
 
