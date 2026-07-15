@@ -1132,7 +1132,7 @@ function RecipeEditor({
             Cancel
           </button>
           <button
-            onClick={() => isValid && onSave(r)}
+            onClick={handleSave}
             disabled={!isValid}
             className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50"
           >
