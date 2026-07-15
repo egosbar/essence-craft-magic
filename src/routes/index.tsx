@@ -694,7 +694,7 @@ function Field({ label, children, className = "" }: { label: string; children: R
 const emptyRecipe = (): Recipe => ({
   id: crypto.randomUUID(),
   name: "",
-  category: "Custom",
+  category: "Neutral",
   description: "",
   targetOG: 1.06,
   targetFG: 1.0,
@@ -708,11 +708,17 @@ const emptyRecipe = (): Recipe => ({
 
 function RecipesView() {
   const [customRecipes, setCustomRecipes] = useLocalStorage<Recipe[]>("sc-custom-recipes", []);
-  const [filter, setFilter] = useState<SpiritCategory | "All">("All");
-  const categories: (SpiritCategory | "All")[] = ["All", "Neutral", "Whiskey", "Rum", "Brandy", "Gin", "Agave", "Custom"];
+  type RecipeFilter = SpiritCategory | "All" | "My Recipes";
+  const [filter, setFilter] = useState<RecipeFilter>("All");
+  const categories: RecipeFilter[] = ["All", "My Recipes", "Neutral", "Whiskey", "Bourbon", "Rum", "Brandy", "Gin", "Agave"];
   const allRecipes = useMemo(() => [...RECIPES, ...customRecipes], [customRecipes]);
   const filtered = useMemo(
-    () => (filter === "All" ? allRecipes : allRecipes.filter((r) => r.category === filter)),
+    () =>
+      filter === "All"
+        ? allRecipes
+        : filter === "My Recipes"
+          ? allRecipes.filter((r) => r.isCustom)
+          : allRecipes.filter((r) => r.category === filter),
     [filter, allRecipes],
   );
   const [open, setOpen] = useState<Recipe | null>(null);
@@ -764,11 +770,11 @@ function RecipesView() {
         <div>
           <h1 className="text-3xl font-semibold">Recipe Library</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Starter recipes plus your own custom washes. Adjust to your still and taste.
+            Starter recipes plus your own. Tag each with a spirit category and rename anytime.
           </p>
         </div>
         <button onClick={() => setCreating(true)} className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold">
-          + Custom recipe
+          + New recipe
         </button>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -913,7 +919,7 @@ function RecipeEditor({
   const [r, setR] = useState<Recipe>(initial);
   const update = <K extends keyof Recipe>(key: K, value: Recipe[K]) => setR((prev) => ({ ...prev, [key]: value }));
 
-  const categories: SpiritCategory[] = ["Neutral", "Whiskey", "Rum", "Brandy", "Gin", "Agave", "Custom"];
+  const categories: SpiritCategory[] = ["Neutral", "Whiskey", "Bourbon", "Rum", "Brandy", "Gin", "Agave"];
 
   const updateIngredient = (idx: number, field: "name" | "amount", value: string) => {
     const next = r.ingredients.map((ing, i) => (i === idx ? { ...ing, [field]: value } : ing));

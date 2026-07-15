@@ -1,4 +1,4 @@
-export type SpiritCategory = "Neutral" | "Whiskey" | "Rum" | "Brandy" | "Gin" | "Agave" | "Custom";
+export type SpiritCategory = "Neutral" | "Whiskey" | "Bourbon" | "Rum" | "Brandy" | "Gin" | "Agave" | "Custom";
 
 export interface Recipe {
   id: string;
