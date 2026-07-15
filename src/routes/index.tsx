@@ -694,7 +694,7 @@ function Field({ label, children, className = "" }: { label: string; children: R
 const emptyRecipe = (): Recipe => ({
   id: crypto.randomUUID(),
   name: "",
-  category: "Custom",
+  category: "Neutral",
   description: "",
   targetOG: 1.06,
   targetFG: 1.0,
