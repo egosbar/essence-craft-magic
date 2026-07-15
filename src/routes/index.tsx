@@ -710,17 +710,27 @@ function RecipesView() {
   const [customRecipes, setCustomRecipes] = useLocalStorage<Recipe[]>("sc-custom-recipes", []);
   type RecipeFilter = SpiritCategory | "All" | "My Recipes";
   const [filter, setFilter] = useState<RecipeFilter>("All");
+  const [mySub, setMySub] = useState<SpiritCategory | "All">("All");
   const categories: RecipeFilter[] = ["All", "My Recipes", "Neutral", "Whiskey", "Bourbon", "Rum", "Brandy", "Gin", "Agave"];
   const allRecipes = useMemo(() => [...RECIPES, ...customRecipes], [customRecipes]);
-  const filtered = useMemo(
-    () =>
-      filter === "All"
-        ? allRecipes
-        : filter === "My Recipes"
-          ? allRecipes.filter((r) => r.isCustom)
-          : allRecipes.filter((r) => r.category === filter),
-    [filter, allRecipes],
-  );
+
+  // Only categories the user actually has recipes in (plus always show "All")
+  const mySubCategories = useMemo(() => {
+    const set = new Set<SpiritCategory>();
+    customRecipes.forEach((r) => set.add(r.category));
+    const order: SpiritCategory[] = ["Neutral", "Whiskey", "Bourbon", "Rum", "Brandy", "Gin", "Agave", "Custom"];
+    return order.filter((c) => set.has(c));
+  }, [customRecipes]);
+
+  const filtered = useMemo(() => {
+    if (filter === "All") return allRecipes;
+    if (filter === "My Recipes") {
+      const mine = allRecipes.filter((r) => r.isCustom);
+      return mySub === "All" ? mine : mine.filter((r) => r.category === mySub);
+    }
+    return allRecipes.filter((r) => r.category === filter);
+  }, [filter, mySub, allRecipes]);
+
   const [open, setOpen] = useState<Recipe | null>(null);
   const [editing, setEditing] = useState<Recipe | null>(null);
   const [creating, setCreating] = useState(false);
@@ -744,6 +754,7 @@ function RecipesView() {
           saveCustom(r);
           setCreating(false);
           setEditing(null);
+          setFilter("My Recipes");
         }}
         onCancel={() => {
           setCreating(false);
@@ -759,7 +770,7 @@ function RecipesView() {
         recipe={open}
         onBack={() => setOpen(null)}
         onEdit={open.isCustom ? () => setEditing(open) : undefined}
-        onDelete={open.isCustom ? () => removeCustom(open.id) : undefined}
+        onDelete={open.isCustom ? () => { removeCustom(open.id); setOpen(null); } : undefined}
       />
     );
   }
@@ -781,7 +792,7 @@ function RecipesView() {
         {categories.map((c) => (
           <button
             key={c}
-            onClick={() => setFilter(c)}
+            onClick={() => { setFilter(c); if (c !== "My Recipes") setMySub("All"); }}
             className={`rounded-full border px-3 py-1 text-xs uppercase tracking-widest transition ${
               filter === c
                 ? "border-transparent btn-copper"
@@ -792,6 +803,49 @@ function RecipesView() {
           </button>
         ))}
       </div>
+
+      {filter === "My Recipes" && (
+        <div className="surface-card rounded-2xl p-4">
+          <div className="mb-3 text-[10px] uppercase tracking-widest text-muted-foreground">
+            My Recipes — by spirit
+          </div>
+          {mySubCategories.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No custom recipes yet. Tap <span className="text-copper font-semibold">+ New recipe</span> to create one.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setMySub("All")}
+                className={`rounded-full border px-3 py-1 text-xs uppercase tracking-widest transition ${
+                  mySub === "All"
+                    ? "border-transparent btn-copper"
+                    : "border-border/70 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All Mine ({customRecipes.length})
+              </button>
+              {mySubCategories.map((c) => {
+                const count = customRecipes.filter((r) => r.category === c).length;
+                return (
+                  <button
+                    key={c}
+                    onClick={() => setMySub(c)}
+                    className={`rounded-full border px-3 py-1 text-xs uppercase tracking-widest transition ${
+                      mySub === c
+                        ? "border-transparent btn-copper"
+                        : "border-border/70 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {c} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((r) => (
           <button
@@ -820,6 +874,7 @@ function RecipesView() {
     </section>
   );
 }
+
 
 function RecipeDetail({
   recipe,
