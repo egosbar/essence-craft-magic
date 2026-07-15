@@ -984,7 +984,18 @@ function RecipeEditor({
   const addIngredient = () => update("ingredients", [...r.ingredients, { name: "", amount: "" }]);
   const removeIngredient = (idx: number) => update("ingredients", r.ingredients.filter((_, i) => i !== idx));
 
-  const isValid = r.name.trim() && r.ingredients.every((i) => i.name.trim());
+  const isValid = r.name.trim().length > 0;
+
+  const handleSave = () => {
+    if (!isValid) return;
+    const cleaned: Recipe = {
+      ...r,
+      name: r.name.trim(),
+      ingredients: r.ingredients.filter((i) => i.name.trim() || i.amount.trim()),
+    };
+    onSave(cleaned);
+  };
+
 
   return (
     <section className="space-y-6">
