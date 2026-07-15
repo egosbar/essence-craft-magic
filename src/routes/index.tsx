@@ -919,7 +919,7 @@ function RecipeEditor({
   const [r, setR] = useState<Recipe>(initial);
   const update = <K extends keyof Recipe>(key: K, value: Recipe[K]) => setR((prev) => ({ ...prev, [key]: value }));
 
-  const categories: SpiritCategory[] = ["Neutral", "Whiskey", "Rum", "Brandy", "Gin", "Agave", "Custom"];
+  const categories: SpiritCategory[] = ["Neutral", "Whiskey", "Bourbon", "Rum", "Brandy", "Gin", "Agave"];
 
   const updateIngredient = (idx: number, field: "name" | "amount", value: string) => {
     const next = r.ingredients.map((ing, i) => (i === idx ? { ...ing, [field]: value } : ing));
