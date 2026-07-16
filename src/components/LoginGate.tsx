@@ -27,6 +27,7 @@ export function LoginGate({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -34,12 +35,18 @@ export function LoginGate({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setStored(JSON.parse(raw));
-      if (sessionStorage.getItem(SESSION_KEY) === "1") setAuthed(true);
+      if (
+        localStorage.getItem(REMEMBER_KEY) === "1" ||
+        sessionStorage.getItem(SESSION_KEY) === "1"
+      ) {
+        setAuthed(true);
+      }
     } catch {
       /* ignore */
     }
     setReady(true);
   }, []);
+
 
   if (!ready) return null;
   if (authed) return <>{children}</>;
