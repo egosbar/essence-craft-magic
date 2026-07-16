@@ -240,15 +240,18 @@ function BatchesView() {
   }
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold">Your Batches</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Log washes from mash to bottle. Track gravity, cuts, and aging.
+    <section className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-display text-xl font-semibold leading-tight sm:text-2xl">Your Batches</h1>
+          <p className="text-[11px] text-muted-foreground sm:text-xs">
+            Log washes from mash to bottle.
           </p>
         </div>
-        <button onClick={() => setCreating(true)} className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold">
+        <button
+          onClick={() => setCreating(true)}
+          className="btn-copper shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold sm:text-sm"
+        >
           + New batch
         </button>
       </div>
@@ -256,7 +259,7 @@ function BatchesView() {
       {batches.length === 0 ? (
         <EmptyState onCreate={() => setCreating(true)} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3">
           {batches.map((b) => (
             <BatchCard key={b.id} batch={b} onOpen={() => setEditingId(b.id)} />
           ))}
@@ -265,6 +268,7 @@ function BatchesView() {
     </section>
   );
 }
+
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
