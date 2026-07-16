@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 
 const STORAGE_KEY = "egos-distilling-auth-v1";
 const SESSION_KEY = "egos-distilling-session-v1";
+const REMEMBER_KEY = "egos-distilling-remember-v1";
+
 
 async function hashPassword(pw: string, salt: string): Promise<string> {
   const enc = new TextEncoder().encode(`${salt}:${pw}`);
