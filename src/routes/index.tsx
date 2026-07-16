@@ -11,6 +11,9 @@ import {
 } from "@/lib/distilling";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { LoginGate } from "@/components/LoginGate";
+import bgDefault from "@/assets/bg_default.png.asset.json";
+import bgBatch from "@/assets/bg_batch.png.asset.json";
+
 
 export const Route = createFileRoute("/")({
   component: GatedIndex,
