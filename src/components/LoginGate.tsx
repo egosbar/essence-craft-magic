@@ -197,6 +197,16 @@ export function LoginGate({ children }: { children: ReactNode }) {
             </div>
           )}
 
+          <label className="flex items-center gap-2 text-sm select-none" style={{ color: "rgba(230,230,230,0.75)" }}>
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 accent-amber-500"
+            />
+            Keep me signed in on this device
+          </label>
+
           <button
             type="submit"
             disabled={busy}
