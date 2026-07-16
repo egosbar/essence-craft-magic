@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 
 const STORAGE_KEY = "egos-distilling-auth-v1";
 const SESSION_KEY = "egos-distilling-session-v1";
+const REMEMBER_KEY = "egos-distilling-remember-v1";
+
 
 async function hashPassword(pw: string, salt: string): Promise<string> {
   const enc = new TextEncoder().encode(`${salt}:${pw}`);
@@ -25,6 +27,7 @@ export function LoginGate({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -32,12 +35,18 @@ export function LoginGate({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setStored(JSON.parse(raw));
-      if (sessionStorage.getItem(SESSION_KEY) === "1") setAuthed(true);
+      if (
+        localStorage.getItem(REMEMBER_KEY) === "1" ||
+        sessionStorage.getItem(SESSION_KEY) === "1"
+      ) {
+        setAuthed(true);
+      }
     } catch {
       /* ignore */
     }
     setReady(true);
   }, []);
+
 
   if (!ready) return null;
   if (authed) return <>{children}</>;
@@ -63,6 +72,8 @@ export function LoginGate({ children }: { children: ReactNode }) {
         const rec: StoredAuth = { salt, hash };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(rec));
         sessionStorage.setItem(SESSION_KEY, "1");
+        if (remember) localStorage.setItem(REMEMBER_KEY, "1");
+        else localStorage.removeItem(REMEMBER_KEY);
         setStored(rec);
         setAuthed(true);
       } else {
@@ -72,8 +83,11 @@ export function LoginGate({ children }: { children: ReactNode }) {
           return;
         }
         sessionStorage.setItem(SESSION_KEY, "1");
+        if (remember) localStorage.setItem(REMEMBER_KEY, "1");
+        else localStorage.removeItem(REMEMBER_KEY);
         setAuthed(true);
       }
+
     } finally {
       setBusy(false);
       setPw("");
@@ -183,6 +197,16 @@ export function LoginGate({ children }: { children: ReactNode }) {
             </div>
           )}
 
+          <label className="flex items-center gap-2 text-sm select-none" style={{ color: "rgba(230,230,230,0.75)" }}>
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 accent-amber-500"
+            />
+            Keep me signed in on this device
+          </label>
+
           <button
             type="submit"
             disabled={busy}
@@ -206,6 +230,7 @@ export function LoginGate({ children }: { children: ReactNode }) {
                 )
               ) {
                 localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(REMEMBER_KEY);
                 sessionStorage.removeItem(SESSION_KEY);
                 setStored(null);
                 setError(null);
