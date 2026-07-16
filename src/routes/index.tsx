@@ -167,13 +167,15 @@ function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   ];
   return (
     <header className="fixed inset-x-0 top-0 z-30">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-6 sm:py-4">
-        <nav className="flex rounded-full border border-[color:var(--copper-500)]/40 bg-black/50 p-1 text-sm shadow-[var(--shadow-deep)] backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2 sm:px-6 sm:py-3">
+        {/* Spacer for baked-in logo on top plank */}
+        <div className="w-[32%] max-w-[420px] shrink-0" aria-hidden />
+        <nav className="flex flex-wrap rounded-full border border-[color:var(--copper-500)]/40 bg-black/50 p-1 text-xs shadow-[var(--shadow-deep)] backdrop-blur-md sm:text-sm">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`rounded-full px-4 py-1.5 font-medium transition ${
+              className={`rounded-full px-3 py-1 font-medium transition sm:px-4 sm:py-1.5 ${
                 tab === t.id
                   ? "btn-copper"
                   : "text-muted-foreground hover:text-foreground"
@@ -187,6 +189,7 @@ function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
     </header>
   );
 }
+
 
 
 /* ---------------- Batches ---------------- */
