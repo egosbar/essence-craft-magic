@@ -145,12 +145,19 @@ function Index() {
       {/* Layer 30: fixed header plank overlay */}
       <Header tab={tab} setTab={setTab} />
       {/* Layer 10: scrollable content between bg and header */}
-      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
+      <main
+        className={
+          tab === "batches"
+            ? "relative z-10 mx-auto w-full max-w-3xl px-[18%] pb-24 pt-16 sm:px-[16%] sm:pt-20"
+            : "relative z-10 mx-auto max-w-6xl px-4 pb-24 pt-20 sm:px-6 sm:pt-24"
+        }
+      >
         {tab === "batches" && <BatchesView />}
         {tab === "recipes" && <RecipesView />}
         {tab === "calc" && <CalculatorsView />}
         {tab === "inventory" && <InventoryView />}
       </main>
+
       <footer className="relative z-10 py-6 text-center text-xs text-muted-foreground">
         Ego's Distilling · Data stays on your device
       </footer>
