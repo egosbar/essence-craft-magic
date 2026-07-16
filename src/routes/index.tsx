@@ -300,27 +300,30 @@ function BatchCard({ batch, onOpen }: { batch: Batch; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className="surface-card group rounded-2xl p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-warm)]"
+      className="surface-card group rounded-xl p-3 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-warm)]"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">{batch.category}</div>
-          <div className="mt-1 font-display text-xl font-semibold">{batch.name || "Untitled batch"}</div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[9px] uppercase tracking-widest text-muted-foreground">{batch.category}</div>
+          <div className="mt-0.5 truncate font-display text-sm font-semibold">{batch.name || "Untitled batch"}</div>
         </div>
-        <span className={`text-xs font-medium ${statusColor[batch.status]}`}>● {batch.status}</span>
+        <span className={`shrink-0 text-[10px] font-medium ${statusColor[batch.status]}`}>● {batch.status}</span>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+      <div className="mt-2 grid grid-cols-3 gap-1.5 text-xs">
         <Stat label="Volume" value={`${batch.volumeL} L`} />
         <Stat label="OG" value={batch.og.toFixed(3)} />
         <Stat label={batch.fg ? "ABV" : "Est. ABV"} value={`${abv.toFixed(1)}%`} />
       </div>
-      <div className="mt-4 text-xs text-muted-foreground">Started {batch.startDate}</div>
-      {elapsed && batch.status === "Fermenting" && (
-        <div className="mt-1 text-xs text-amber-300">Fermenting: {elapsed} since pitch</div>
-      )}
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 text-[10px] text-muted-foreground">
+        <span>Started {batch.startDate}</span>
+        {elapsed && batch.status === "Fermenting" && (
+          <span className="text-amber-300">· Fermenting {elapsed}</span>
+        )}
+      </div>
     </button>
   );
 }
+
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
