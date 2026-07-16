@@ -148,7 +148,7 @@ function Index() {
       <main
         className={
           tab === "batches"
-            ? "relative z-10 mx-auto w-full max-w-3xl px-[18%] pb-24 pt-16 sm:px-[16%] sm:pt-20"
+            ? "relative z-10 mx-auto w-full max-w-2xl px-4 pb-24 pt-16 sm:px-6 sm:pt-20"
             : "relative z-10 mx-auto max-w-6xl px-4 pb-24 pt-20 sm:px-6 sm:pt-24"
         }
       >
@@ -157,6 +157,7 @@ function Index() {
         {tab === "calc" && <CalculatorsView />}
         {tab === "inventory" && <InventoryView />}
       </main>
+
 
       <footer className="relative z-10 py-6 text-center text-xs text-muted-foreground">
         Ego's Distilling · Data stays on your device
