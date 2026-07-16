@@ -230,6 +230,7 @@ export function LoginGate({ children }: { children: ReactNode }) {
                 )
               ) {
                 localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(REMEMBER_KEY);
                 sessionStorage.removeItem(SESSION_KEY);
                 setStored(null);
                 setError(null);
