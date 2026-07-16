@@ -145,12 +145,20 @@ function Index() {
       {/* Layer 30: fixed header plank overlay */}
       <Header tab={tab} setTab={setTab} />
       {/* Layer 10: scrollable content between bg and header */}
-      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
+      <main
+        className={
+          tab === "batches"
+            ? "relative z-10 mx-auto w-full max-w-2xl px-4 pb-24 pt-16 sm:px-6 sm:pt-20"
+            : "relative z-10 mx-auto max-w-6xl px-4 pb-24 pt-20 sm:px-6 sm:pt-24"
+        }
+      >
         {tab === "batches" && <BatchesView />}
         {tab === "recipes" && <RecipesView />}
         {tab === "calc" && <CalculatorsView />}
         {tab === "inventory" && <InventoryView />}
       </main>
+
+
       <footer className="relative z-10 py-6 text-center text-xs text-muted-foreground">
         Ego's Distilling · Data stays on your device
       </footer>
@@ -167,13 +175,15 @@ function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   ];
   return (
     <header className="fixed inset-x-0 top-0 z-30">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-6 sm:py-4">
-        <nav className="flex rounded-full border border-[color:var(--copper-500)]/40 bg-black/50 p-1 text-sm shadow-[var(--shadow-deep)] backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2 sm:px-6 sm:py-3">
+        {/* Spacer for baked-in logo on top plank */}
+        <div className="w-[32%] max-w-[420px] shrink-0" aria-hidden />
+        <nav className="flex flex-wrap rounded-full border border-[color:var(--copper-500)]/40 bg-black/50 p-1 text-xs shadow-[var(--shadow-deep)] backdrop-blur-md sm:text-sm">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`rounded-full px-4 py-1.5 font-medium transition ${
+              className={`rounded-full px-3 py-1 font-medium transition sm:px-4 sm:py-1.5 ${
                 tab === t.id
                   ? "btn-copper"
                   : "text-muted-foreground hover:text-foreground"
@@ -187,6 +197,7 @@ function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
     </header>
   );
 }
+
 
 
 /* ---------------- Batches ---------------- */
@@ -229,15 +240,18 @@ function BatchesView() {
   }
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold">Your Batches</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Log washes from mash to bottle. Track gravity, cuts, and aging.
+    <section className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-display text-xl font-semibold leading-tight sm:text-2xl">Your Batches</h1>
+          <p className="text-[11px] text-muted-foreground sm:text-xs">
+            Log washes from mash to bottle.
           </p>
         </div>
-        <button onClick={() => setCreating(true)} className="btn-copper rounded-lg px-4 py-2 text-sm font-semibold">
+        <button
+          onClick={() => setCreating(true)}
+          className="btn-copper shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold sm:text-sm"
+        >
           + New batch
         </button>
       </div>
@@ -245,7 +259,7 @@ function BatchesView() {
       {batches.length === 0 ? (
         <EmptyState onCreate={() => setCreating(true)} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3">
           {batches.map((b) => (
             <BatchCard key={b.id} batch={b} onOpen={() => setEditingId(b.id)} />
           ))}
@@ -254,6 +268,7 @@ function BatchesView() {
     </section>
   );
 }
+
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
@@ -285,27 +300,30 @@ function BatchCard({ batch, onOpen }: { batch: Batch; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className="surface-card group rounded-2xl p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-warm)]"
+      className="surface-card group rounded-xl p-3 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-warm)]"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">{batch.category}</div>
-          <div className="mt-1 font-display text-xl font-semibold">{batch.name || "Untitled batch"}</div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[9px] uppercase tracking-widest text-muted-foreground">{batch.category}</div>
+          <div className="mt-0.5 truncate font-display text-sm font-semibold">{batch.name || "Untitled batch"}</div>
         </div>
-        <span className={`text-xs font-medium ${statusColor[batch.status]}`}>● {batch.status}</span>
+        <span className={`shrink-0 text-[10px] font-medium ${statusColor[batch.status]}`}>● {batch.status}</span>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+      <div className="mt-2 grid grid-cols-3 gap-1.5 text-xs">
         <Stat label="Volume" value={`${batch.volumeL} L`} />
         <Stat label="OG" value={batch.og.toFixed(3)} />
         <Stat label={batch.fg ? "ABV" : "Est. ABV"} value={`${abv.toFixed(1)}%`} />
       </div>
-      <div className="mt-4 text-xs text-muted-foreground">Started {batch.startDate}</div>
-      {elapsed && batch.status === "Fermenting" && (
-        <div className="mt-1 text-xs text-amber-300">Fermenting: {elapsed} since pitch</div>
-      )}
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 text-[10px] text-muted-foreground">
+        <span>Started {batch.startDate}</span>
+        {elapsed && batch.status === "Fermenting" && (
+          <span className="text-amber-300">· Fermenting {elapsed}</span>
+        )}
+      </div>
     </button>
   );
 }
+
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
