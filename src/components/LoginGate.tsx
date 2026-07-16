@@ -72,6 +72,8 @@ export function LoginGate({ children }: { children: ReactNode }) {
         const rec: StoredAuth = { salt, hash };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(rec));
         sessionStorage.setItem(SESSION_KEY, "1");
+        if (remember) localStorage.setItem(REMEMBER_KEY, "1");
+        else localStorage.removeItem(REMEMBER_KEY);
         setStored(rec);
         setAuthed(true);
       } else {
@@ -81,8 +83,11 @@ export function LoginGate({ children }: { children: ReactNode }) {
           return;
         }
         sessionStorage.setItem(SESSION_KEY, "1");
+        if (remember) localStorage.setItem(REMEMBER_KEY, "1");
+        else localStorage.removeItem(REMEMBER_KEY);
         setAuthed(true);
       }
+
     } finally {
       setBusy(false);
       setPw("");
