@@ -11,6 +11,9 @@ import {
 } from "@/lib/distilling";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { LoginGate } from "@/components/LoginGate";
+import bgDefault from "@/assets/bg_default.png.asset.json";
+import bgBatch from "@/assets/bg_batch.png.asset.json";
+
 
 export const Route = createFileRoute("/")({
   component: GatedIndex,
@@ -123,17 +126,32 @@ function FermentElapsed({ pitchedAt }: { pitchedAt?: string }) {
 
 function Index() {
   const [tab, setTab] = useState<Tab>("batches");
+  const bgUrl = tab === "batches" ? bgBatch.url : bgDefault.url;
 
   return (
-    <div className="min-h-screen">
+    <div className="relative min-h-screen">
+      {/* Layer 0: fixed background skin */}
+      <div
+        aria-hidden
+        className="fixed inset-0 z-0 pointer-events-none"
+        style={{
+          backgroundImage: `url(${bgUrl})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center top",
+          backgroundRepeat: "no-repeat",
+          backgroundColor: "#0d1a17",
+        }}
+      />
+      {/* Layer 30: fixed header plank overlay */}
       <Header tab={tab} setTab={setTab} />
-      <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 sm:px-6 sm:pt-10">
+      {/* Layer 10: scrollable content between bg and header */}
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
         {tab === "batches" && <BatchesView />}
         {tab === "recipes" && <RecipesView />}
         {tab === "calc" && <CalculatorsView />}
         {tab === "inventory" && <InventoryView />}
       </main>
-      <footer className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
+      <footer className="relative z-10 py-6 text-center text-xs text-muted-foreground">
         Ego's Distilling · Data stays on your device
       </footer>
     </div>
@@ -148,23 +166,9 @@ function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
     { id: "inventory", label: "Inventory" },
   ];
   return (
-    <header className="sticky top-0 z-10 border-b border-border/60 backdrop-blur-xl"
-      style={{ background: "oklch(0.16 0.015 60 / 0.75)" }}>
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-full btn-copper text-lg">
-            <span aria-hidden>⚗︎</span>
-          </div>
-          <div>
-            <div className="font-display text-xl font-semibold leading-none">
-              Ego's Distilling
-            </div>
-            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1">
-              Spirit batch tracker
-            </div>
-          </div>
-        </div>
-        <nav className="flex rounded-full border border-border/70 bg-card/50 p-1 text-sm">
+    <header className="fixed inset-x-0 top-0 z-30">
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-6 sm:py-4">
+        <nav className="flex rounded-full border border-[color:var(--copper-500)]/40 bg-black/50 p-1 text-sm shadow-[var(--shadow-deep)] backdrop-blur-md">
           {tabs.map((t) => (
             <button
               key={t.id}
@@ -183,6 +187,7 @@ function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
     </header>
   );
 }
+
 
 /* ---------------- Batches ---------------- */
 
